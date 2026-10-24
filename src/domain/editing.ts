@@ -377,10 +377,11 @@ function inputDegree(
     );
   }
 
-  const measureIndex = assertChordPoint(state.score, state.cursor);
+  const cursor = state.cursor;
+  const measureIndex = assertChordPoint(state.score, cursor);
   const score = updateMeasure(state.score, measureIndex, (measure) => {
     const existing = measure.chords.find(
-      (chord) => chord.position === state.cursor.position,
+      (chord) => chord.position === cursor.position,
     );
     if (existing !== undefined && existing.degree === degree) {
       return measure;
@@ -401,12 +402,12 @@ function inputDegree(
           id: idFactory("chord"),
           measureId: measure.id,
           degree,
-          position: state.cursor.position,
+          position: cursor.position,
         },
       ],
     };
   });
-  return commit(state, score, state.cursor, null);
+  return commit(state, score, cursor, null);
 }
 
 function copySelection(state: EditorState): EditorClipboard | null {
@@ -563,9 +564,10 @@ function pasteChords(
   ) {
     return state;
   }
-  const measureIndex = assertChordPoint(state.score, state.cursor);
+  const cursor = state.cursor;
+  const measureIndex = assertChordPoint(state.score, cursor);
   const positions = clipboard.events.map(
-    (event) => state.cursor.position + event.positionOffset,
+    (event) => cursor.position + event.positionOffset,
   );
   if (
     positions.some(
@@ -576,7 +578,7 @@ function pasteChords(
   }
   const pasted = clipboard.events.map<ChordDegreeEvent>((event, index) => ({
     id: idFactory("chord"),
-    measureId: state.cursor.measureId,
+    measureId: cursor.measureId,
     degree: event.degree,
     position: positions[index],
   }));

@@ -332,12 +332,14 @@ function App() {
             chord.position >= selectedChordRange.startPosition &&
             chord.position <= selectedChordRange.endPosition,
         );
+  const chordCursor =
+    state.cursor.context === "chord" ? state.cursor : null;
   const cursorChord =
-    state.cursor.context !== "chord"
+    chordCursor === null
       ? null
       : score.measures
-          .find((measure) => measure.id === state.cursor.measureId)
-          ?.chords.find((chord) => chord.position === state.cursor.position) ??
+          .find((measure) => measure.id === chordCursor.measureId)
+          ?.chords.find((chord) => chord.position === chordCursor.position) ??
         null;
   const targetedChords =
     selectedChordRange === null
