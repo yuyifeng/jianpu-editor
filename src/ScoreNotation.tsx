@@ -45,8 +45,11 @@ const DURATION_LABELS = {
   half: "二分音符",
   quarter: "四分音符",
   eighth: "八分音符",
+  "eighth-triplet": "三连音，三个音合计一拍",
   sixteenth: "十六分音符",
 } as const;
+
+const EXTENSION_LABELS = ["", "1/4", "1/2", "3/4", "1"] as const;
 
 const STATUS_LABELS = {
   exact: "时值正确",
@@ -74,9 +77,15 @@ function OctaveDots({
 
 function DurationMarks({ symbol }: { readonly symbol: MelodySymbol }) {
   const lineCount =
-    symbol.duration === "eighth" ? 1 : symbol.duration === "sixteenth" ? 2 : 0;
+    symbol.duration === "eighth" || symbol.duration === "eighth-triplet"
+      ? 1
+      : symbol.duration === "sixteenth"
+        ? 2
+        : 0;
   const sustainCount =
     symbol.duration === "whole" ? 3 : symbol.duration === "half" ? 1 : 0;
+  const extensionMark =
+    symbol.extension === 0 ? "" : `—${EXTENSION_LABELS[symbol.extension]}`;
 
   return (
     <>
@@ -92,6 +101,16 @@ function DurationMarks({ symbol }: { readonly symbol: MelodySymbol }) {
           {"—".repeat(sustainCount)}
         </span>
       )}
+      {extensionMark !== "" && (
+        <span className="extension-mark" aria-hidden="true">
+          {extensionMark}
+        </span>
+      )}
+      {symbol.duration === "eighth-triplet" && (
+        <span className="triplet-mark" aria-hidden="true">
+          3
+        </span>
+      )}
     </>
   );
 }
@@ -99,8 +118,12 @@ function DurationMarks({ symbol }: { readonly symbol: MelodySymbol }) {
 function getSymbolLabel(symbol: MelodySymbol): string {
   const duration = DURATION_LABELS[symbol.duration];
   const dotted = symbol.dotted ? "，附点" : "";
+  const extension =
+    symbol.extension === 0
+      ? ""
+      : `，额外延长 ${EXTENSION_LABELS[symbol.extension]} 拍`;
   if (symbol.kind === "rest") {
-    return `休止符，${duration}${dotted}`;
+    return `休止符，${duration}${dotted}${extension}`;
   }
 
   const accidental =
@@ -109,7 +132,7 @@ function getSymbolLabel(symbol: MelodySymbol): string {
     symbol.octave === 0
       ? ""
       : `，${symbol.octave > 0 ? "高" : "低"}${Math.abs(symbol.octave)}个八度`;
-  return `${symbol.degree}，${duration}${octave}${accidental}${dotted}`;
+  return `${symbol.degree}，${duration}${octave}${accidental}${dotted}${extension}`;
 }
 
 function SymbolView({

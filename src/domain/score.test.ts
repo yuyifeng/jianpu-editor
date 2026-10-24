@@ -46,7 +46,7 @@ describe("score model", () => {
     expect(getTimeSignatureCapacity(signature)).toBe(capacity);
   });
 
-  it("calculates dotted values and reports non-blocking measure duration status", () => {
+  it("calculates dotted and extension values and reports measure duration status", () => {
     const ids = createSequentialIdFactory("duration");
     const measure: Measure = {
       id: ids("measure"),
@@ -62,6 +62,26 @@ describe("score model", () => {
     expect(getMeasureDurationStatus(measure, "3/4")).toBe("overfilled");
     expect(getMeasureDurationStatus({ ...measure, symbols: measure.symbols.slice(0, 1) }, "4/4"))
       .toBe("underfilled");
+    expect(
+      getMeasureDuration({
+        ...measure,
+        symbols: [createNote({ degree: 2, extension: 1 }, ids)],
+      }),
+    ).toBe(5);
+    expect(
+      getMeasureDuration({
+        ...measure,
+        symbols: [1, 2, 3].map((degree) =>
+          createNote(
+            {
+              degree: degree as 1 | 2 | 3,
+              duration: "eighth-triplet",
+            },
+            ids,
+          ),
+        ),
+      }),
+    ).toBeCloseTo(4);
   });
 
   it("updates pitch, octave, accidental and duration without mutating the source note", () => {
@@ -81,6 +101,7 @@ describe("score model", () => {
       accidental: "none",
       duration: "quarter",
       dotted: false,
+      extension: 0,
     });
     expect(shortened).toMatchObject({
       degree: 5,
@@ -88,6 +109,7 @@ describe("score model", () => {
       accidental: "sharp",
       duration: "eighth",
       dotted: true,
+      extension: 0,
     });
   });
 

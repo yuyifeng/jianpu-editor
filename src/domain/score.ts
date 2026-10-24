@@ -1,7 +1,14 @@
 export const SCORE_FORMAT_VERSION = 1 as const;
 
 export const TIME_SIGNATURES = ["2/4", "3/4", "4/4", "6/8"] as const;
-export const DURATIONS = ["whole", "half", "quarter", "eighth", "sixteenth"] as const;
+export const DURATIONS = [
+  "whole",
+  "half",
+  "quarter",
+  "eighth",
+  "eighth-triplet",
+  "sixteenth",
+] as const;
 export const ACCIDENTALS = ["none", "sharp", "flat", "natural"] as const;
 export const MODES = ["major", "natural-minor"] as const;
 export const KEY_SIGNATURES = [
@@ -26,6 +33,7 @@ export type Mode = (typeof MODES)[number];
 export type KeySignature = (typeof KEY_SIGNATURES)[number];
 export type ScaleDegree = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type Octave = -2 | -1 | 0 | 1 | 2;
+export type ExtensionUnits = 0 | 1 | 2 | 3 | 4;
 export type EntityKind = "score" | "measure" | "note" | "rest" | "chord";
 export type IdFactory = (kind: EntityKind) => string;
 
@@ -33,6 +41,7 @@ interface TimedSymbol {
   readonly id: string;
   readonly duration: Duration;
   readonly dotted: boolean;
+  readonly extension: ExtensionUnits;
 }
 
 export interface Note extends TimedSymbol {
@@ -82,12 +91,14 @@ export interface NoteInput {
   readonly octave?: Octave;
   readonly accidental?: Accidental;
   readonly dotted?: boolean;
+  readonly extension?: ExtensionUnits;
   readonly tieToNext?: boolean;
 }
 
 export interface RestInput {
   readonly duration?: Duration;
   readonly dotted?: boolean;
+  readonly extension?: ExtensionUnits;
 }
 
 export type MeasureDurationStatus = "exact" | "underfilled" | "overfilled";
@@ -97,6 +108,7 @@ const DURATION_IN_SIXTEENTHS: Readonly<Record<Duration, number>> = {
   half: 8,
   quarter: 4,
   eighth: 2,
+  "eighth-triplet": 4 / 3,
   sixteenth: 1,
 };
 
@@ -122,7 +134,23 @@ export function createSequentialIdFactory(namespace = "jianpu"): IdFactory {
   };
 }
 
-export const generateEntityId: IdFactory = (kind) => `${kind}-${crypto.randomUUID()}`;
+function createRandomToken(): string {
+  const cryptoApi = globalThis.crypto;
+  if (typeof cryptoApi?.randomUUID === "function") {
+    return cryptoApi.randomUUID();
+  }
+  if (typeof cryptoApi?.getRandomValues === "function") {
+    const values = new Uint32Array(4);
+    cryptoApi.getRandomValues(values);
+    return Array.from(values, (value) => value.toString(16).padStart(8, "0")).join(
+      "",
+    );
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+export const generateEntityId: IdFactory = (kind) =>
+  `${kind}-${createRandomToken()}`;
 
 export function createNote(input: NoteInput, idFactory: IdFactory = generateEntityId): Note {
   return {
@@ -133,6 +161,7 @@ export function createNote(input: NoteInput, idFactory: IdFactory = generateEnti
     octave: input.octave ?? 0,
     accidental: input.accidental ?? "none",
     dotted: input.dotted ?? false,
+    extension: input.extension ?? 0,
     tieToNext: input.tieToNext ?? false,
   };
 }
@@ -146,6 +175,7 @@ export function createRest(
     kind: "rest",
     duration: input.duration ?? "quarter",
     dotted: input.dotted ?? false,
+    extension: input.extension ?? 0,
   };
 }
 
@@ -173,9 +203,11 @@ export function getTimeSignatureCapacity(timeSignature: TimeSignature): number {
   return TIME_SIGNATURE_CAPACITY[timeSignature];
 }
 
-export function getSymbolDuration(symbol: Pick<MelodySymbol, "duration" | "dotted">): number {
+export function getSymbolDuration(
+  symbol: Pick<MelodySymbol, "duration" | "dotted" | "extension">,
+): number {
   const baseDuration = DURATION_IN_SIXTEENTHS[symbol.duration];
-  return symbol.dotted ? baseDuration * 1.5 : baseDuration;
+  return (symbol.dotted ? baseDuration * 1.5 : baseDuration) + symbol.extension;
 }
 
 export function getMeasureDuration(measure: Measure): number {
@@ -199,7 +231,10 @@ export function getMeasureDurationStatus(
 export function updateNote(
   note: Note,
   changes: Partial<
-    Pick<Note, "degree" | "octave" | "accidental" | "duration" | "dotted">
+    Pick<
+      Note,
+      "degree" | "octave" | "accidental" | "duration" | "dotted" | "extension"
+    >
   >,
 ): Note {
   return { ...note, ...changes };

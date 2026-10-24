@@ -63,6 +63,15 @@ function validateTimedSymbol(value: JsonObject, path: string): string | null {
     return `${path}.dotted must be a boolean.`;
   }
 
+  if (
+    value.extension !== undefined &&
+    (!Number.isInteger(value.extension) ||
+      Number(value.extension) < 0 ||
+      Number(value.extension) > 4)
+  ) {
+    return `${path}.extension must be an integer from 0 through 4.`;
+  }
+
   return null;
 }
 
@@ -277,6 +286,7 @@ function normalizeScore(value: unknown): Score {
               kind: symbol.kind,
               duration: symbol.duration,
               dotted: symbol.dotted,
+              extension: symbol.extension ?? 0,
             }
           : {
               id: symbol.id,
@@ -286,6 +296,7 @@ function normalizeScore(value: unknown): Score {
               octave: symbol.octave,
               accidental: symbol.accidental,
               dotted: symbol.dotted,
+              extension: symbol.extension ?? 0,
               tieToNext: symbol.tieToNext,
             },
       ),

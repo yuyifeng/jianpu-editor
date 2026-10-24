@@ -758,7 +758,7 @@ select:focus-visible {
 .symbol-cell {
   position: relative;
   display: grid;
-  min-width: 42px;
+  min-width: 56px;
   grid-template-rows: 58px;
   align-items: center;
   border-radius: 3px;
@@ -856,6 +856,30 @@ select:focus-visible {
   font-weight: 400;
   letter-spacing: 1px;
   white-space: nowrap;
+}
+
+.extension-mark {
+  position: absolute;
+  top: 7px;
+  left: calc(100% + 3px);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.triplet-mark {
+  position: absolute;
+  z-index: 1;
+  top: 21px;
+  left: 50%;
+  padding: 0 2px;
+  transform: translateX(-50%);
+  background: var(--color-panel);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .tie-arc {
@@ -973,6 +997,7 @@ select:focus-visible {
   }
 
   .score-page {
+    min-width: 0;
     padding-right: 24px;
     padding-left: 24px;
   }

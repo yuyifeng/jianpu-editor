@@ -58,6 +58,7 @@ function playbackScore(): Score {
               degree: 4,
               duration: "eighth",
               dotted: true,
+              extension: 1,
               octave: 1,
               accidental: "flat",
             },
@@ -78,7 +79,36 @@ function playbackScore(): Score {
 }
 
 describe("playback timeline", () => {
-  it("converts tempo and dotted durations into one absolute timeline", () => {
+  it("fits three eighth-note triplets into one quarter-note beat", () => {
+    const ids = createSequentialIdFactory("triplet");
+    const score = createEmptyScore(ids);
+    const tripletScore: Score = {
+      ...score,
+      measures: [
+        {
+          ...score.measures[0],
+          symbols: [1, 2, 3].map((degree) =>
+            createNote(
+              {
+                degree: degree as 1 | 2 | 3,
+                duration: "eighth-triplet",
+              },
+              ids,
+            ),
+          ),
+        },
+      ],
+    };
+
+    const timeline = buildPlaybackTimeline(tripletScore);
+
+    expect(timeline.melody[0]).toMatchObject({ startUnits: 0 });
+    expect(timeline.melody[1].startUnits).toBeCloseTo(4 / 3);
+    expect(timeline.melody[2].startUnits).toBeCloseTo(8 / 3);
+    expect(timeline.melody[2].endUnits).toBeCloseTo(4);
+  });
+
+  it("converts tempo, dotted durations and extensions into one timeline", () => {
     const timeline = buildPlaybackTimeline(playbackScore());
 
     expect(timeline.secondsPerUnit).toBe(0.125);
@@ -94,7 +124,7 @@ describe("playback timeline", () => {
       { startUnits: 4, endUnits: 8 },
       { startUnits: 8, endUnits: 16 },
       { startUnits: 16, endUnits: 20 },
-      { startUnits: 20, endUnits: 23 },
+      { startUnits: 20, endUnits: 24 },
     ]);
   });
 
@@ -118,7 +148,7 @@ describe("playback timeline", () => {
       {
         id: "melody:playback-note-4",
         startUnits: 20,
-        endUnits: 23,
+        endUnits: 24,
         midi: 76,
       },
     ]);

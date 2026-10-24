@@ -56,6 +56,7 @@ describe("editor melody context", () => {
         octave: 1,
         accidental: "sharp",
         dotted: true,
+        extension: 1,
       },
     });
     state = reduce(state, { type: "input-degree", degree: 3 });
@@ -70,6 +71,7 @@ describe("editor melody context", () => {
         octave: 1,
         accidental: "sharp",
         dotted: true,
+        extension: 1,
         tieToNext: false,
       },
       {
@@ -77,6 +79,7 @@ describe("editor melody context", () => {
         kind: "rest",
         duration: "eighth",
         dotted: true,
+        extension: 1,
       },
     ]);
     expect(state.cursor).toEqual({
@@ -99,7 +102,7 @@ describe("editor melody context", () => {
     });
     state = reduce(state, {
       type: "update-selected-melody",
-      changes: { degree: 5, duration: "half", dotted: true },
+      changes: { degree: 5, duration: "half", dotted: true, extension: 1 },
     });
 
     expect(state.score.measures[0].symbols[0]).toMatchObject({
@@ -107,6 +110,7 @@ describe("editor melody context", () => {
       degree: 5,
       duration: "half",
       dotted: true,
+      extension: 1,
       tieToNext: true,
     });
 
@@ -122,6 +126,7 @@ describe("editor melody context", () => {
         kind: "rest",
         duration: "quarter",
         dotted: false,
+        extension: 0,
       },
     ]);
     expect(state.cursor).toMatchObject({ context: "melody", symbolIndex: 0 });

@@ -160,10 +160,29 @@ describe("versioned score serialization", () => {
     expect(legacyResult.ok).toBe(true);
     if (legacyResult.ok) {
       expect(legacyResult.value.score).not.toHaveProperty("author");
-      expect(legacyResult.value.score.measures[0].symbols[0]).not.toHaveProperty(
-        "lyric",
-      );
+      expect(legacyResult.value.score.measures[0].symbols[0]).toMatchObject({
+        extension: 0,
+      });
+      expect(
+        legacyResult.value.score.measures[0].symbols[0],
+      ).not.toHaveProperty("lyric");
     }
+    expectErrorCode(
+      validateScoreDocument({
+        format: SCORE_DOCUMENT_FORMAT,
+        version: 1,
+        score: {
+          ...score,
+          measures: [
+            {
+              ...measure,
+              symbols: [{ ...measure.symbols[0], extension: 5 }],
+            },
+          ],
+        },
+      }),
+      "INVALID_STRUCTURE",
+    );
     expectErrorCode(
       validateScoreDocument({
         format: SCORE_DOCUMENT_FORMAT,

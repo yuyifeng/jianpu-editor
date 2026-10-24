@@ -34,6 +34,7 @@ import {
   shortcutToEditorAction,
   type Accidental,
   type Duration,
+  type ExtensionUnits,
   type KeySignature,
   type MelodySymbolChanges,
   type Mode,
@@ -90,6 +91,7 @@ const DURATION_OPTIONS: ReadonlyArray<{
   { value: "half", label: "二分音符" },
   { value: "quarter", label: "四分音符" },
   { value: "eighth", label: "八分音符" },
+  { value: "eighth-triplet", label: "三连音（3 音 = 1 拍）" },
   { value: "sixteenth", label: "十六分音符" },
 ];
 
@@ -112,6 +114,17 @@ const ACCIDENTAL_OPTIONS: ReadonlyArray<{
   { value: "sharp", label: "升号" },
   { value: "flat", label: "降号" },
   { value: "natural", label: "还原号" },
+];
+
+const EXTENSION_OPTIONS: ReadonlyArray<{
+  readonly value: ExtensionUnits;
+  readonly label: string;
+}> = [
+  { value: 0, label: "不延长" },
+  { value: 1, label: "延长 1/4 拍" },
+  { value: 2, label: "延长 1/2 拍" },
+  { value: 3, label: "延长 3/4 拍" },
+  { value: 4, label: "延长 1 拍" },
 ];
 
 const SAVE_STATUS_LABELS: Readonly<Record<SaveStatus, string>> = {
@@ -463,6 +476,23 @@ function App() {
       disabled: state.history.future.length === 0,
       onClick: () => dispatch({ type: "redo" }),
     },
+    {
+      label: "删除",
+      icon: Trash2,
+      disabled:
+        editingContext === "melody"
+          ? selectedRange === null &&
+            (state.cursor.context !== "melody" ||
+              state.cursor.symbolIndex === 0)
+          : targetedChords.length === 0,
+      onClick: () =>
+        dispatch({
+          type:
+            editingContext === "melody" && selectedRange === null
+              ? "delete-backward"
+              : "delete-forward",
+        }),
+    },
   ];
 
   function updateMetadata(changes: ScoreMetadataChanges) {
@@ -477,6 +507,9 @@ function App() {
         ? {}
         : { accidental: changes.accidental }),
       ...(changes.dotted === undefined ? {} : { dotted: changes.dotted }),
+      ...(changes.extension === undefined
+        ? {}
+        : { extension: changes.extension }),
     };
     dispatch({ type: "set-input", changes: inputChanges });
     if (selectedRange !== null) {
@@ -868,6 +901,25 @@ function App() {
                 }
               >
                 {ACCIDENTAL_OPTIONS.map((option) => (
+                  <option value={option.value} key={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="compact-field">
+              <span>延音</span>
+              <select
+                value={selectedSymbols[0]?.extension ?? input.extension}
+                onChange={(event) =>
+                  updateInput({
+                    extension: Number(
+                      event.currentTarget.value,
+                    ) as ExtensionUnits,
+                  })
+                }
+              >
+                {EXTENSION_OPTIONS.map((option) => (
                   <option value={option.value} key={option.value}>
                     {option.label}
                   </option>

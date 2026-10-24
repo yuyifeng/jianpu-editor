@@ -8,6 +8,7 @@ import {
   type Accidental,
   type ChordDegreeEvent,
   type Duration,
+  type ExtensionUnits,
   type IdFactory,
   type MelodySymbol,
   type Note,
@@ -53,6 +54,7 @@ export interface MelodyInputSettings {
   readonly octave: Octave;
   readonly accidental: Accidental;
   readonly dotted: boolean;
+  readonly extension: ExtensionUnits;
 }
 
 export interface MelodyClipboard {
@@ -115,7 +117,13 @@ export type ScoreMetadataChanges = Partial<
 export type MelodySymbolChanges = Partial<
   Pick<
     Note,
-    "degree" | "duration" | "octave" | "accidental" | "dotted" | "tieToNext"
+    | "degree"
+    | "duration"
+    | "octave"
+    | "accidental"
+    | "dotted"
+    | "extension"
+    | "tieToNext"
   >
 >;
 
@@ -154,6 +162,7 @@ const DEFAULT_INPUT: MelodyInputSettings = {
   octave: 0,
   accidental: "none",
   dotted: false,
+  extension: 0,
 };
 
 const STOPPED_PLAYBACK: PlaybackState = { status: "stopped" };
@@ -619,11 +628,16 @@ function updateSelectedMelody(
       if (symbol.kind === "rest") {
         const duration = changes.duration ?? symbol.duration;
         const dotted = changes.dotted ?? symbol.dotted;
-        if (duration === symbol.duration && dotted === symbol.dotted) {
+        const extension = changes.extension ?? symbol.extension;
+        if (
+          duration === symbol.duration &&
+          dotted === symbol.dotted &&
+          extension === symbol.extension
+        ) {
           return symbol;
         }
         changed = true;
-        return { ...symbol, duration, dotted };
+        return { ...symbol, duration, dotted, extension };
       }
       const updated = { ...symbol, ...changes };
       if (
@@ -632,6 +646,7 @@ function updateSelectedMelody(
         updated.octave === symbol.octave &&
         updated.accidental === symbol.accidental &&
         updated.dotted === symbol.dotted &&
+        updated.extension === symbol.extension &&
         updated.tieToNext === symbol.tieToNext
       ) {
         return symbol;
@@ -899,7 +914,11 @@ export function reduceEditorState(
         ? insertMelodySymbol(
             state,
             createRest(
-              { duration: state.input.duration, dotted: state.input.dotted },
+              {
+                duration: state.input.duration,
+                dotted: state.input.dotted,
+                extension: state.input.extension,
+              },
               idFactory,
             ),
           )
