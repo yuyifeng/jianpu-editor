@@ -62,8 +62,9 @@ select:focus-visible {
 
 .app-shell {
   display: grid;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   grid-template-rows: auto auto auto minmax(0, 1fr);
   background: var(--color-canvas);
 }
@@ -484,6 +485,7 @@ select:focus-visible {
   min-height: 0;
   overflow: auto;
   padding: 28px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .score-page {
@@ -970,6 +972,18 @@ select:focus-visible {
 }
 
 @media (max-width: 680px) {
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .app-shell {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    grid-template-rows: auto auto auto auto;
+  }
+
   .command-bar,
   .score-info,
   .note-toolbar {
@@ -993,7 +1007,12 @@ select:focus-visible {
   }
 
   .workspace-scroller {
+    overflow: visible;
     padding: 12px;
+  }
+
+  .workspace {
+    grid-template-rows: auto 28px;
   }
 
   .score-page {
