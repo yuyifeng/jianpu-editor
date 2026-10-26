@@ -12,11 +12,12 @@ interface ScheduledVoice {
 
 type AudioContextConstructor = new () => AudioContext;
 
-const MELODY_GAIN = 0.82;
-const CHORD_GAIN = 0.38;
-const MASTER_GAIN = 0.9;
-const ATTACK_SECONDS = 0.008;
-const RELEASE_SECONDS = 0.08;
+const MELODY_GAIN = 0.7;
+const CHORD_GAIN = 0.22;
+const MASTER_GAIN = 0.78;
+const ATTACK_SECONDS = 0.012;
+const RELEASE_SECONDS = 0.1;
+const INTERRUPT_RELEASE_SECONDS = 0.05;
 
 function getAudioContextConstructor(): AudioContextConstructor {
   const AudioContextClass =
@@ -153,11 +154,11 @@ export class PianoAudioEngine {
     melodyBus.gain.value = MELODY_GAIN;
     chordBus.gain.value = CHORD_GAIN;
     master.gain.value = MASTER_GAIN;
-    compressor.threshold.value = -6;
-    compressor.knee.value = 4;
-    compressor.ratio.value = 12;
-    compressor.attack.value = 0.003;
-    compressor.release.value = 0.2;
+    compressor.threshold.value = -10;
+    compressor.knee.value = 12;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.005;
+    compressor.release.value = 0.18;
 
     melodyBus.connect(master);
     chordBus.connect(master);
@@ -178,14 +179,17 @@ export class PianoAudioEngine {
 
     this.voices.delete(voiceId);
     const now = context.currentTime;
-    voice.gain.gain.cancelScheduledValues(now);
-    voice.gain.gain.setValueAtTime(
-      Math.max(voice.gain.gain.value, 0.0001),
-      now,
-    );
-    voice.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+    const gain = voice.gain.gain;
+    if (typeof gain.cancelAndHoldAtTime === "function") {
+      gain.cancelAndHoldAtTime(now);
+    } else {
+      const currentGain = Math.max(gain.value, 0);
+      gain.cancelScheduledValues(now);
+      gain.setValueAtTime(currentGain, now);
+    }
+    gain.linearRampToValueAtTime(0, now + INTERRUPT_RELEASE_SECONDS);
     try {
-      voice.source.stop(now + 0.05);
+      voice.source.stop(now + INTERRUPT_RELEASE_SECONDS + 0.01);
     } catch {
       voice.source.disconnect();
       voice.gain.disconnect();
