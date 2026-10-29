@@ -4,6 +4,8 @@ import {
   createNote,
   createRest,
   generateEntityId,
+  getMeasureDuration,
+  getSymbolDuration,
   getTimeSignatureCapacity,
   type Accidental,
   type ChordDegreeEvent,
@@ -18,6 +20,7 @@ import {
 } from "./score";
 
 export const EDIT_HISTORY_LIMIT = 100;
+const DURATION_EPSILON = 1e-9;
 
 export interface MelodyPoint {
   readonly measureId: string;
@@ -345,6 +348,18 @@ function insertMelodySymbol(
   if (range === null || state.cursor.context !== "melody") {
     return state;
   }
+  const measure = state.score.measures[range.measureIndex];
+  if (
+    !canReplaceMelodyRange(
+      state,
+      measure,
+      range.start,
+      range.end,
+      [symbol],
+    )
+  ) {
+    return state;
+  }
   const score = updateMeasure(state.score, range.measureIndex, (measure) => ({
     ...measure,
     symbols: [
@@ -363,6 +378,26 @@ function insertMelodySymbol(
     },
     null,
   );
+}
+
+function canReplaceMelodyRange(
+  state: EditorState,
+  measure: Score["measures"][number],
+  start: number,
+  end: number,
+  replacements: readonly MelodySymbol[],
+): boolean {
+  const removedDuration = measure.symbols
+    .slice(start, end)
+    .reduce((total, symbol) => total + getSymbolDuration(symbol), 0);
+  const addedDuration = replacements.reduce(
+    (total, symbol) => total + getSymbolDuration(symbol),
+    0,
+  );
+  const capacity = getTimeSignatureCapacity(state.score.timeSignature);
+  const nextDuration =
+    getMeasureDuration(measure) - removedDuration + addedDuration;
+  return nextDuration <= capacity + DURATION_EPSILON;
 }
 
 function inputDegree(
@@ -524,6 +559,18 @@ function pasteMelody(
   ) {
     return state;
   }
+  const measure = state.score.measures[range.measureIndex];
+  if (
+    !canReplaceMelodyRange(
+      state,
+      measure,
+      range.start,
+      range.end,
+      clipboard.symbols,
+    )
+  ) {
+    return state;
+  }
   const symbols = clipboard.symbols.map((symbol) => ({
     ...symbol,
     id: idFactory(symbol.kind),
@@ -621,43 +668,59 @@ function updateSelectedMelody(
     return state;
   }
   const measureIndex = getMeasureIndex(state.score, selection.measureId);
-  const score = updateMeasure(state.score, measureIndex, (measure) => {
-    let changed = false;
-    const symbols = measure.symbols.map((symbol, index) => {
-      if (index < selection.start || index >= selection.end) {
-        return symbol;
-      }
-      if (symbol.kind === "rest") {
-        const duration = changes.duration ?? symbol.duration;
-        const dotted = changes.dotted ?? symbol.dotted;
-        const extension = changes.extension ?? symbol.extension;
-        if (
-          duration === symbol.duration &&
-          dotted === symbol.dotted &&
-          extension === symbol.extension
-        ) {
-          return symbol;
-        }
-        changed = true;
-        return { ...symbol, duration, dotted, extension };
-      }
-      const updated = { ...symbol, ...changes };
+  const measure = state.score.measures[measureIndex];
+  let changed = false;
+  const symbols = measure.symbols.map((symbol, index) => {
+    if (index < selection.start || index >= selection.end) {
+      return symbol;
+    }
+    if (symbol.kind === "rest") {
+      const duration = changes.duration ?? symbol.duration;
+      const dotted = changes.dotted ?? symbol.dotted;
+      const extension = changes.extension ?? symbol.extension;
       if (
-        updated.degree === symbol.degree &&
-        updated.duration === symbol.duration &&
-        updated.octave === symbol.octave &&
-        updated.accidental === symbol.accidental &&
-        updated.dotted === symbol.dotted &&
-        updated.extension === symbol.extension &&
-        updated.tieToNext === symbol.tieToNext
+        duration === symbol.duration &&
+        dotted === symbol.dotted &&
+        extension === symbol.extension
       ) {
         return symbol;
       }
       changed = true;
-      return updated;
-    });
-    return changed ? { ...measure, symbols } : measure;
+      return { ...symbol, duration, dotted, extension };
+    }
+    const updated = { ...symbol, ...changes };
+    if (
+      updated.degree === symbol.degree &&
+      updated.duration === symbol.duration &&
+      updated.octave === symbol.octave &&
+      updated.accidental === symbol.accidental &&
+      updated.dotted === symbol.dotted &&
+      updated.extension === symbol.extension &&
+      updated.tieToNext === symbol.tieToNext
+    ) {
+      return symbol;
+    }
+    changed = true;
+    return updated;
   });
+
+  if (
+    !changed ||
+    !canReplaceMelodyRange(
+      state,
+      measure,
+      selection.start,
+      selection.end,
+      symbols.slice(selection.start, selection.end),
+    )
+  ) {
+    return state;
+  }
+
+  const score = updateMeasure(state.score, measureIndex, (current) => ({
+    ...current,
+    symbols,
+  }));
   return commit(state, score);
 }
 

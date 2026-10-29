@@ -90,6 +90,26 @@ describe("editor melody context", () => {
     expect(state.history.past).toHaveLength(2);
   });
 
+  it("rejects melody input that would exceed the measure capacity", () => {
+    const ids = createSequentialIdFactory("input-capacity");
+    const reduce = reducer(ids);
+    let state = createEditorState(createEmptyScore(ids));
+
+    state = reduce(state, {
+      type: "set-input",
+      changes: { duration: "whole" },
+    });
+    state = reduce(state, { type: "input-degree", degree: 1 });
+    const fullMeasureState = state;
+
+    expect(reduce(state, { type: "input-degree", degree: 2 })).toBe(
+      fullMeasureState,
+    );
+    expect(reduce(state, { type: "input-rest" })).toBe(fullMeasureState);
+    expect(state.score.measures[0].symbols).toHaveLength(1);
+    expect(state.history.past).toHaveLength(1);
+  });
+
   it("updates selected notes in place, preserves ties, then deletes a range", () => {
     const ids = createSequentialIdFactory("replace");
     const reduce = reducer(ids);
@@ -102,15 +122,15 @@ describe("editor melody context", () => {
     });
     state = reduce(state, {
       type: "update-selected-melody",
-      changes: { degree: 5, duration: "half", dotted: true, extension: 1 },
+      changes: { degree: 5, duration: "half" },
     });
 
     expect(state.score.measures[0].symbols[0]).toMatchObject({
       id: "replace-note-1",
       degree: 5,
       duration: "half",
-      dotted: true,
-      extension: 1,
+      dotted: false,
+      extension: 0,
       tieToNext: true,
     });
 
@@ -132,10 +152,42 @@ describe("editor melody context", () => {
     expect(state.cursor).toMatchObject({ context: "melody", symbolIndex: 0 });
   });
 
+  it("rejects selected duration changes that would overfill the measure", () => {
+    const ids = createSequentialIdFactory("update-capacity");
+    const reduce = reducer(ids);
+    let state = createEditorState(scoreWithMelody(ids));
+    const measureId = state.score.measures[0].id;
+
+    state = reduce(state, {
+      type: "set-selection",
+      selection: { context: "melody", measureId, start: 0, end: 1 },
+    });
+    const selectedState = state;
+
+    expect(
+      reduce(state, {
+        type: "update-selected-melody",
+        changes: { duration: "whole" },
+      }),
+    ).toBe(selectedState);
+  });
+
   it("copies a continuous melody range and pastes new IDs with undo and redo", () => {
     const ids = createSequentialIdFactory("melody-copy");
     const reduce = reducer(ids);
-    let state = createEditorState(scoreWithMelody(ids));
+    const sourceScore = scoreWithMelody(ids);
+    let state = createEditorState({
+      ...sourceScore,
+      measures: [
+        {
+          ...sourceScore.measures[0],
+          symbols: sourceScore.measures[0].symbols.map((symbol) => ({
+            ...symbol,
+            duration: "eighth",
+          })),
+        },
+      ],
+    });
     const measureId = state.score.measures[0].id;
     const sourceIds = state.score.measures[0].symbols.slice(0, 2).map(({ id }) => id);
 
@@ -167,6 +219,26 @@ describe("editor melody context", () => {
     expect(state.score.measures[0].symbols).toHaveLength(3);
     state = reduce(state, { type: "redo" });
     expect(state.score).toBe(pastedScore);
+  });
+
+  it("rejects melody paste that would exceed the measure capacity", () => {
+    const ids = createSequentialIdFactory("paste-capacity");
+    const reduce = reducer(ids);
+    let state = createEditorState(scoreWithMelody(ids));
+    const measureId = state.score.measures[0].id;
+
+    state = reduce(state, {
+      type: "set-selection",
+      selection: { context: "melody", measureId, start: 0, end: 2 },
+    });
+    state = reduce(state, { type: "copy" });
+    state = reduce(state, {
+      type: "set-cursor",
+      cursor: { context: "melody", measureId, symbolIndex: 3 },
+    });
+    const beforePaste = state;
+
+    expect(reduce(state, { type: "paste" })).toBe(beforePaste);
   });
 });
 

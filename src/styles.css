@@ -642,18 +642,17 @@ select:focus-visible {
 
 .chord-position-grid {
   display: grid;
-  min-width: 100%;
+  min-width: 0;
   height: 27px;
-  overflow-x: auto;
+  overflow: hidden;
   border-top: 1px solid var(--color-line);
   border-bottom: 1px solid var(--color-line);
-  scrollbar-width: thin;
 }
 
 .chord-position {
   position: relative;
   display: grid;
-  min-width: 18px;
+  min-width: 0;
   height: 25px;
   place-items: center;
   padding: 0;
@@ -718,22 +717,36 @@ select:focus-visible {
 }
 
 .melody-row {
+  position: relative;
   z-index: 1;
-  display: flex;
+  display: grid;
   min-width: 0;
+  min-height: 76px;
+  grid-template-rows: 76px;
   align-items: stretch;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  overflow: hidden;
 }
 
 .cursor-slot {
-  position: relative;
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: 0;
   width: 7px;
-  min-width: 7px;
-  min-height: 76px;
+  min-width: 0;
+  min-height: 0;
   padding: 0;
   border: 0;
+  transform: translateX(-50%);
   background: transparent;
+}
+
+.cursor-slot.is-start {
+  transform: none;
+}
+
+.cursor-slot.is-end {
+  transform: translateX(-100%);
 }
 
 .cursor-slot::after {
@@ -760,7 +773,8 @@ select:focus-visible {
 .symbol-cell {
   position: relative;
   display: grid;
-  min-width: 56px;
+  min-width: 0;
+  grid-row: 1;
   grid-template-rows: 58px;
   align-items: center;
   border-radius: 3px;
@@ -781,7 +795,7 @@ select:focus-visible {
   width: 100%;
   height: 58px;
   place-items: center;
-  padding: 0 3px;
+  padding: 0;
   border: 0;
   border-radius: 3px;
   background: transparent;
@@ -790,7 +804,8 @@ select:focus-visible {
 .notation {
   position: relative;
   display: grid;
-  min-width: 28px;
+  width: 100%;
+  min-width: 0;
   min-height: 45px;
   grid-template-rows: 10px 25px 10px;
   place-items: center;
@@ -800,14 +815,15 @@ select:focus-visible {
 .notation-main {
   position: relative;
   display: flex;
-  min-width: 25px;
+  width: 100%;
+  min-width: 0;
   height: 25px;
   align-items: center;
   justify-content: center;
 }
 
 .degree {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
   line-height: 1;
 }
@@ -898,8 +914,9 @@ select:focus-visible {
 
 .empty-measure {
   z-index: 1;
-  min-width: 150px;
-  flex: 1;
+  min-width: 0;
+  grid-column: 1 / -1;
+  grid-row: 1;
   align-self: stretch;
   border: 0;
   color: #78827b;

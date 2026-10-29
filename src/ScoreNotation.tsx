@@ -2,6 +2,7 @@ import {
   Fragment,
   useEffect,
   useRef,
+  type CSSProperties,
   type Dispatch,
 } from "react";
 import { AlertTriangle, Plus, Trash2 } from "lucide-react";
@@ -9,6 +10,7 @@ import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import {
   getMeasureDuration,
   getMeasureDurationStatus,
+  getSymbolDuration,
   getTimeSignatureCapacity,
   type ChordPoint,
   type EditorAction,
@@ -30,6 +32,7 @@ interface SymbolViewProps {
   readonly measureId: string;
   readonly selected: boolean;
   readonly playing: boolean;
+  readonly style: CSSProperties;
   readonly onSelect: (extend: boolean) => void;
 }
 
@@ -141,6 +144,7 @@ function SymbolView({
   measureId,
   selected,
   playing,
+  style,
   onSelect,
 }: SymbolViewProps) {
   const note = symbol.kind === "note" ? symbol : null;
@@ -156,6 +160,7 @@ function SymbolView({
         .filter(Boolean)
         .join(" ")}
       role="gridcell"
+      style={style}
     >
       <button
         className="symbol-button"
@@ -229,6 +234,7 @@ function ChordLane({
   measure,
   measureIndex,
   state,
+  layoutDuration,
   movingChordId,
   onSelectPosition,
   onMoveChord,
@@ -236,6 +242,7 @@ function ChordLane({
   readonly measure: Measure;
   readonly measureIndex: number;
   readonly state: EditorState;
+  readonly layoutDuration: number;
   readonly movingChordId: string | null;
   readonly onSelectPosition: (
     measureId: string,
@@ -246,6 +253,11 @@ function ChordLane({
 }) {
   const capacity = getTimeSignatureCapacity(state.score.timeSignature);
   const beatUnit = state.score.timeSignature === "6/8" ? 2 : 4;
+  const overflowDuration = Math.max(0, layoutDuration - capacity);
+  const gridTemplateColumns =
+    overflowDuration > 0
+      ? `repeat(${capacity}, minmax(0, 1fr)) minmax(0, ${overflowDuration}fr)`
+      : `repeat(${capacity}, minmax(0, 1fr))`;
 
   return (
     <div className="chord-lane">
@@ -257,7 +269,7 @@ function ChordLane({
         role="group"
         aria-label={`第 ${measureIndex + 1} 小节和弦轨，共 ${capacity} 个十六分拍位`}
         style={{
-          gridTemplateColumns: `repeat(${capacity}, minmax(18px, 1fr))`,
+          gridTemplateColumns,
         }}
       >
         {Array.from({ length: capacity }, (_, position) => {
@@ -352,6 +364,27 @@ function MeasureView({
 }) {
   const duration = getMeasureDuration(measure);
   const capacity = getTimeSignatureCapacity(state.score.timeSignature);
+  const layoutDuration = Math.max(capacity, duration);
+  const columnsPerSixteenth = 6;
+  const melodyColumnCount = Math.round(
+    layoutDuration * columnsPerSixteenth,
+  );
+  let symbolStart = 0;
+  const positionedSymbols = measure.symbols.map((symbol, symbolIndex) => {
+    const start = symbolStart;
+    const symbolDuration = getSymbolDuration(symbol);
+    symbolStart += symbolDuration;
+    return {
+      symbol,
+      symbolIndex,
+      start,
+      columnStart: Math.round(start * columnsPerSixteenth) + 1,
+      columnSpan: Math.max(
+        1,
+        Math.round(symbolDuration * columnsPerSixteenth),
+      ),
+    };
+  });
   const status = getMeasureDurationStatus(measure, state.score.timeSignature);
   const active = state.cursor.measureId === measure.id;
 
@@ -401,18 +434,34 @@ function MeasureView({
         measure={measure}
         measureIndex={measureIndex}
         state={state}
+        layoutDuration={layoutDuration}
         movingChordId={movingChordId}
         onSelectPosition={onSelectChordPosition}
         onMoveChord={onMoveChord}
       />
 
-      <div className="melody-row" role="grid" aria-label={`第 ${measureIndex + 1} 小节旋律`}>
-        {measure.symbols.map((symbol, symbolIndex) => (
+      <div
+        className="melody-row"
+        role="grid"
+        aria-label={`第 ${measureIndex + 1} 小节旋律`}
+        style={{
+          gridTemplateColumns: `repeat(${melodyColumnCount}, minmax(0, 1fr))`,
+        }}
+      >
+        {positionedSymbols.map(
+          ({ symbol, symbolIndex, start, columnStart, columnSpan }) => (
           <Fragment key={symbol.id}>
             <button
-              className={`cursor-slot ${
-                isCursorAt(state, measure.id, symbolIndex) ? "is-current" : ""
-              }`}
+              className={[
+                "cursor-slot",
+                symbolIndex === 0 ? "is-start" : "",
+                isCursorAt(state, measure.id, symbolIndex)
+                  ? "is-current"
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={{ left: `${(start / layoutDuration) * 100}%` }}
               type="button"
               aria-label={`将光标置于第 ${measureIndex + 1} 小节第 ${
                 symbolIndex + 1
@@ -434,18 +483,27 @@ function MeasureView({
               measureId={measure.id}
               selected={isSymbolSelected(state, measure.id, symbolIndex)}
               playing={state.playback.symbolId === symbol.id}
+              style={{
+                gridColumn: `${columnStart} / span ${columnSpan}`,
+              }}
               onSelect={(extend) =>
                 onSelectSymbol(measure.id, symbolIndex, extend)
               }
             />
           </Fragment>
-        ))}
+          ),
+        )}
         <button
-          className={`cursor-slot ${
+          className={[
+            "cursor-slot",
+            "is-end",
             isCursorAt(state, measure.id, measure.symbols.length)
               ? "is-current"
-              : ""
-          }`}
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          style={{ left: `${(duration / layoutDuration) * 100}%` }}
           type="button"
           aria-label={`将光标置于第 ${measureIndex + 1} 小节末尾`}
           onClick={() =>
