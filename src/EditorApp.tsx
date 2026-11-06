@@ -180,6 +180,55 @@ function isTextControl(target: EventTarget | null): boolean {
   );
 }
 
+function TempoInput({
+  value,
+  onCommit,
+}: {
+  readonly value: number;
+  readonly onCommit: (tempo: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  function commit() {
+    const tempo = Number(draft);
+    if (Number.isInteger(tempo) && tempo >= 30 && tempo <= 240) {
+      setDraft(String(tempo));
+      if (tempo !== value) {
+        onCommit(tempo);
+      }
+    } else {
+      setDraft(String(value));
+    }
+  }
+
+  return (
+    <input
+      value={draft}
+      max="240"
+      min="30"
+      step="1"
+      type="number"
+      inputMode="numeric"
+      title="输入 30–240 BPM，按回车或离开输入框确认"
+      onChange={(event) => setDraft(event.currentTarget.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.currentTarget.blur();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          setDraft(String(value));
+        }
+      }}
+    />
+  );
+}
+
 function App() {
   const [initialSession] = useState(createInitialEditorSession);
   const [state, dispatch] = useReducer(
@@ -771,17 +820,9 @@ function App() {
         <label className="field field-tempo">
           <span>速度</span>
           <span className="input-suffix">
-            <input
+            <TempoInput
               value={score.tempo}
-              max="240"
-              min="30"
-              type="number"
-              onChange={(event) => {
-                const tempo = Number(event.currentTarget.value);
-                if (Number.isInteger(tempo) && tempo >= 30 && tempo <= 240) {
-                  updateMetadata({ tempo });
-                }
-              }}
+              onCommit={(tempo) => updateMetadata({ tempo })}
             />
             <span>BPM</span>
           </span>
